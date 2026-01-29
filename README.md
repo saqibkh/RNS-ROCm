@@ -1,4 +1,4 @@
-# rocm-rns-matmul
+# RNS-ROCm - Residue Number System Library For Matrix Multiplications on ROCm/HIP based GPU
 
 A high-performance ROCm/HIP C++ library for exact modular arithmetic using the **Residue Number System (RNS)**, focused on batched small matrix multiplications and CRT reconstruction.
 
