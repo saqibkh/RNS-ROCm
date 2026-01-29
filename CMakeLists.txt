@@ -45,6 +45,10 @@ set(RNS_SOURCES
   src/crt.cpp
   src/utils.cpp
   src/primes.cpp
+  src/io.cpp
+  src/rns_eval_cpu.cpp
+  src/rns_walk_cpu.cpp
+  src/topk_cpu.cpp
 )
 
 if(RNS_HAS_GPU)
@@ -54,6 +58,10 @@ if(RNS_HAS_GPU)
     src/hip/rns_matmul_m6.hip
     src/hip/rns_matmul_m8.hip
     src/hip/rns_matmul_m10.hip
+    src/hip/modops.hip
+    src/hip/rns_eval_bytecode.hip
+    src/hip/rns_walk_fused.hip
+    src/hip/topk.hip
   )
 endif()
 
@@ -97,6 +105,27 @@ if(RNS_ENABLE_TESTS)
     target_link_libraries(test_gemm_mod PRIVATE rns_rocm)
     add_test(NAME test_gemm_mod COMMAND test_gemm_mod)
   endif()
+  
+  # New tests for v2 modules
+  add_executable(test_primes tests/test_primes.cpp)
+  target_link_libraries(test_primes PRIVATE rns_rocm)
+  add_test(NAME test_primes COMMAND test_primes)
+  
+  add_executable(test_modops tests/test_modops.cpp)
+  target_link_libraries(test_modops PRIVATE rns_rocm)
+  add_test(NAME test_modops COMMAND test_modops)
+  
+  add_executable(test_eval_bytecode tests/test_eval_bytecode.cpp)
+  target_link_libraries(test_eval_bytecode PRIVATE rns_rocm)
+  add_test(NAME test_eval_bytecode COMMAND test_eval_bytecode)
+  
+  add_executable(test_walk tests/test_walk.cpp)
+  target_link_libraries(test_walk PRIVATE rns_rocm)
+  add_test(NAME test_walk COMMAND test_walk)
+  
+  add_executable(test_topk tests/test_topk.cpp)
+  target_link_libraries(test_topk PRIVATE rns_rocm)
+  add_test(NAME test_topk COMMAND test_topk)
 endif()
 
 # Examples
@@ -108,6 +137,9 @@ if(RNS_ENABLE_EXAMPLES)
   
   add_executable(demo_crt_matrix examples/demo_crt_matrix.cpp)
   target_link_libraries(demo_crt_matrix PRIVATE rns_rocm)
+  
+  add_executable(demo_cmf_pipeline examples/demo_cmf_pipeline.cpp)
+  target_link_libraries(demo_cmf_pipeline PRIVATE rns_rocm)
 endif()
 
 # Install
