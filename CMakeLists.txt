@@ -9,6 +9,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(RNS_ENABLE_GPU "Enable GPU (ROCm/HIP) support" ON)
 option(RNS_ENABLE_TESTS "Enable unit tests" ON)
 option(RNS_ENABLE_EXAMPLES "Enable example programs" ON)
+option(RNS_BUILD_PYTHON "Build Python bindings" OFF)
 
 # Find Boost for multiprecision (header-only)
 find_package(Boost QUIET)
@@ -65,22 +66,25 @@ if(RNS_HAS_GPU)
   )
 endif()
 
-# Main library
-add_library(rns_rocm ${RNS_SOURCES})
+# Main library (renamed for Python to avoid conflict)
+add_library(rns_rocm_lib ${RNS_SOURCES})
 
-target_include_directories(rns_rocm PUBLIC
+# Alias for backwards compatibility
+add_library(rns_rocm ALIAS rns_rocm_lib)
+
+target_include_directories(rns_rocm_lib PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 if(Boost_FOUND)
-  target_include_directories(rns_rocm PUBLIC ${Boost_INCLUDE_DIRS})
+  target_include_directories(rns_rocm_lib PUBLIC ${Boost_INCLUDE_DIRS})
 endif()
 
 if(RNS_HAS_GPU)
-  set_target_properties(rns_rocm PROPERTIES
+  set_target_properties(rns_rocm_lib PROPERTIES
     HIP_ARCHITECTURES "gfx90a;gfx908;gfx1030"
   )
-  target_link_libraries(rns_rocm PUBLIC hip::device)
+  target_link_libraries(rns_rocm_lib PUBLIC hip::device)
 endif()
 
 # Tests
@@ -126,6 +130,14 @@ if(RNS_ENABLE_TESTS)
   add_executable(test_topk tests/test_topk.cpp)
   target_link_libraries(test_topk PRIVATE rns_rocm)
   add_test(NAME test_topk COMMAND test_topk)
+  
+  add_executable(test_montgomery tests/test_montgomery.cpp)
+  target_link_libraries(test_montgomery PRIVATE rns_rocm)
+  add_test(NAME test_montgomery COMMAND test_montgomery)
+  
+  add_executable(test_crt_approx tests/test_crt_approx.cpp)
+  target_link_libraries(test_crt_approx PRIVATE rns_rocm)
+  add_test(NAME test_crt_approx COMMAND test_crt_approx)
 endif()
 
 # Examples
@@ -142,8 +154,13 @@ if(RNS_ENABLE_EXAMPLES)
   target_link_libraries(demo_cmf_pipeline PRIVATE rns_rocm)
 endif()
 
+# Python bindings (optional)
+if(RNS_BUILD_PYTHON)
+  add_subdirectory(python)
+endif()
+
 # Install
-install(TARGETS rns_rocm
+install(TARGETS rns_rocm_lib
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
 )
@@ -155,5 +172,6 @@ message(STATUS "=== RNS-RoCM Configuration ===")
 message(STATUS "  GPU support:    ${RNS_HAS_GPU}")
 message(STATUS "  Tests:          ${RNS_ENABLE_TESTS}")
 message(STATUS "  Examples:       ${RNS_ENABLE_EXAMPLES}")
+message(STATUS "  Python:         ${RNS_BUILD_PYTHON}")
 message(STATUS "  Boost bigint:   ${Boost_FOUND}")
 message(STATUS "")

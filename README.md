@@ -212,15 +212,119 @@ prog.instr = instrs.data();
 eval_program_to_matrix(prog, x_vals, out_matrix, alive, pm, K, B);
 ```
 
+## Python Bindings
+
+The library includes optional Python bindings via pybind11.
+
+### Installation
+
+```bash
+# From source (CPU-only)
+cd python
+pip install .
+
+# With GPU support
+RNS_ENABLE_GPU=ON pip install .
+
+# Development mode
+pip install -e .
+```
+
+### Python Usage
+
+```python
+import numpy as np
+from rns import (
+    generate_primes, mul_mod, inv_mod,
+    Instruction, Program, OpCodes,
+    run_walk, select_topk
+)
+
+# Generate primes
+primes = np.array(generate_primes(32), dtype=np.uint32)
+
+# Define a program (step matrix)
+instrs = [
+    Instruction(OpCodes.LOAD_X, 0, 0),     # r0 = x[0]
+    Instruction(OpCodes.LOAD_C, 1, 0),     # r1 = const[0] = 1
+    Instruction(OpCodes.ADD, 2, 0, 1),     # r2 = x[0] + 1
+]
+const_values = np.ones((32, 1), dtype=np.uint32)
+out_reg = [2, 0, 0, 2]  # 2x2 matrix [[x+1, x], [x, x+1]]
+
+prog = Program(m=2, dim=1, instructions=instrs,
+               out_reg=out_reg, n_reg=3, const_values=const_values)
+
+# Run walk
+shifts = np.random.randint(-1000, 1000, (100, 1), dtype=np.int32)
+dirs = np.ones(1, dtype=np.int32)
+
+result = run_walk(prog, shifts, dirs, primes,
+                  depth=200, depth1=50, depth2=200)
+
+# Select best candidates
+topk = select_topk(result['delta2'], result['est2'], k=10, ascending=True)
+print(f"Best indices: {topk['indices']}")
+```
+
+### Pure Python Fallback
+
+If the native module is not available, the library falls back to pure Python implementations. Check `rns.HAS_NATIVE` to see which mode is active.
+
+## New in v0.3.0
+
+### Montgomery Multiplication
+Fast modular multiplication using Montgomery reduction:
+```cpp
+#include "rns/montgomery.h"
+auto mp = compute_montgomery_params_ext(prime);
+u32 aR = to_mont(a, mp.r2, mp.p, mp.pinv);
+u32 bR = to_mont(b, mp.r2, mp.p, mp.pinv);
+u32 cR = mont_mul(aR, bR, mp.p, mp.pinv);
+u32 c = from_mont(cR, mp.p, mp.pinv);  // c = a*b mod p
+```
+
+### SymPy Bytecode Compiler
+Compile SymPy matrix expressions to GPU bytecode:
+```python
+import sympy as sp
+from rns import compile_matrix, disassemble
+
+x0, x1 = sp.symbols('x0 x1')
+M = sp.Matrix([[x0 + 1, x1], [1, x0 * x1]])
+prog = compile_matrix(M, [x0, x1], K=32)
+print(disassemble(prog))
+```
+
+### K_small CRT Scoring
+Approximate magnitudes using partial CRT (avoids float overflow):
+```cpp
+#include "rns/crt_approx.h"
+auto plan = create_crt_approx_plan(pm, K_small=3);
+double log_mag = crt_approx_log_magnitude(residues, plan);
+double ratio = crt_approx_ratio(residues_a, residues_b, plan);
+```
+
+### Auto-Generated Kernels
+Generate optimized GEMM kernels for any matrix size:
+```bash
+python scripts/gen_gemm_kernels.py --max-m 20 --output-dir src/generated
+```
+
+### MPI Multi-GPU Support
+Distributed walks across multiple GPUs:
+```cpp
+#include "rns/mpi_support.h"
+MpiConfig cfg;
+init_mpi_rns(cfg);
+auto result = run_distributed_walk(cfg, walk_cfg, prog, shifts, dirs, pm, B, Kkeep);
+```
+
 ## Future Roadmap
 
-1. **Montgomery backend**: Faster mul_mod with conversion to Montgomery domain
-2. **Real CMF programs**: Compile SymPy expressions to bytecode DAGs
-3. **K_small CRT scoring**: Replace shadow float with partial CRT for better delta proxy
-4. **MPI multi-GPU**: 1 rank per GPU with per-rank logging
-5. **More matrix sizes**: Auto-generated kernels for m up to 20
-6. **GPU CRT**: Partial CRT for fast float approximation on GPU
-7. **Python bindings**: PyBind11 wrapper
+1. **GPU-native walk kernel**: Full walk on GPU without CPU roundtrip
+2. **Streaming pipeline**: Overlap compute and I/O
+3. **NTT/FFT support**: For polynomial arithmetic
 
 ## Comparison with CUDA Ecosystem
 
