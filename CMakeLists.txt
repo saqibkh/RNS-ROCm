@@ -82,7 +82,7 @@ endif()
 
 if(RNS_HAS_GPU)
   set_target_properties(rns_rocm_lib PROPERTIES
-    HIP_ARCHITECTURES "gfx90a;gfx908;gfx1030"
+    HIP_ARCHITECTURES "gfx90a"
   )
   target_link_libraries(rns_rocm_lib PUBLIC hip::device)
 endif()
