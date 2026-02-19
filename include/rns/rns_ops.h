@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include "rns_types.h"
+#include <hip/hip_runtime.h>
 
 // Device/host function specifiers
 #if defined(__HIPCC__) || defined(__CUDACC__)
