@@ -19,7 +19,7 @@ namespace rns {
  * Returns x mod p using precomputed mu = floor(2^64/p).
  */
 RNS_HOST_DEVICE uint32_t barrett_reduce_u64(uint64_t x, const Modulus32& mod) {
-#if defined(__HIPCC__) || defined(__CUDACC__)
+#if defined(__HIP_DEVICE_COMPILE__)
   // GPU: use __umul64hi for high 64 bits
   uint64_t q = __umul64hi(x, mod.mu);
 #else
