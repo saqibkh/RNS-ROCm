@@ -50,6 +50,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libboost-dev
 
+      - name: Diagnose find_package(hip)
+        continue-on-error: true
+        run: |
+          dpkg -l | grep -E "hip|comgr|hsa|rocm|amd" | awk '{print $2, $3}'
+          ls /opt/rocm/lib/cmake || true
+          mkdir /tmp/d && printf 'cmake_minimum_required(VERSION 3.21)\nproject(d CXX)\nlist(APPEND CMAKE_PREFIX_PATH /opt/rocm)\nfind_package(hip REQUIRED)\n' > /tmp/d/CMakeLists.txt
+          cmake -S /tmp/d -B /tmp/d/b || true
+          apt-cache search -n 'comgr|rocprofiler-register|rocm-cmake' | head
+
       # CMakeLists.txt pins HIP_ARCHITECTURES to gfx90a (MI250X). The explicit
       # CMAKE_HIP_ARCHITECTURES keeps CMake from probing for a GPU.
       - name: Configure
