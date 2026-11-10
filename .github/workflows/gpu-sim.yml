@@ -45,15 +45,15 @@ jobs:
           cuda-toolkit: none
           rocm: "7.1"
 
-      - name: Install Boost headers
+      - name: Install Boost headers and comgr
         run: |
           sudo apt-get update
-          sudo apt-get install -y libboost-dev
+          sudo apt-get install -y libboost-dev comgr
 
       - name: Diagnose find_package(hip)
         continue-on-error: true
         run: |
-          dpkg -l | grep -E "hip|comgr|hsa|rocm|amd" | awk '{print $2, $3}'
+          dpkg -l | grep -E "^ii  (hip|comgr|hsa|rocm|rocprof)" | awk "{print \$2, \$3}"
           ls /opt/rocm/lib/cmake || true
           mkdir /tmp/d && printf 'cmake_minimum_required(VERSION 3.21)\nproject(d CXX)\nlist(APPEND CMAKE_PREFIX_PATH /opt/rocm)\nfind_package(hip REQUIRED)\n' > /tmp/d/CMakeLists.txt
           cmake -S /tmp/d -B /tmp/d/b || true
